@@ -32,14 +32,32 @@ contains
 
     integer(i_def) :: comm
 
+    write(*,*) 'lfric_xios_initialise: entered, split=', comm_has_been_split, &
+               ' model_name=', trim(model_name), ' comm=', model_communicator%get_comm_mpi_val()
+
+    write(*,*) 'lfric_xios_initialise: start, split=', comm_has_been_split, &
+               ' model_name=', trim(model_name), ' comm=', model_communicator%get_comm_mpi_val()
+
     if (comm_has_been_split) then
+      write(*,*) 'lfric_xios_initialise: branch split=TRUE, local_comm=', model_communicator%get_comm_mpi_val()
+      write(*,*) 'lfric_xios_initialise: calling xios_initialize(local_comm=...)'
       call xios_initialize( model_name, &
                             local_comm=model_communicator%get_comm_mpi_val() )
+      write(*,*) 'lfric_xios_initialise: returned from xios_initialize(local_comm=...)'
     else
+      write(*,*) 'lfric_xios_initialise: branch split=FALSE, before init_wait()'
+      write(*,*) 'lfric_xios_initialise: calling init_wait() before xios_initialize(return_comm=...)'
       call init_wait()
+      write(*,*) 'lfric_xios_initialise: returned from init_wait()'
+      write(*,*) 'lfric_xios_initialise: before xios_initialize(return_comm=...), comm=', comm
+      write(*,*) 'lfric_xios_initialise: calling xios_initialize(return_comm=...)'
       call xios_initialize( model_name, return_comm=comm )
+      write(*,*) 'lfric_xios_initialise: returned from xios_initialize(return_comm=...), comm=', comm
       call model_communicator%set_comm_mpi_val(comm)
+      write(*,*) 'lfric_xios_initialise: stored returned communicator'
     end if
+
+    write(*,*) 'lfric_xios_initialise: end'
 
   end subroutine lfric_xios_initialise
 
