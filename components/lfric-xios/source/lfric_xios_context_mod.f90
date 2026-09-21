@@ -232,16 +232,20 @@ contains
   end subroutine finalise
 
   !> Finaliser for lfric_xios_context object.
-  subroutine finalise_xios_context( this )
+  subroutine finalise_xios_context( this, force_finalize )
 
     implicit none
 
     class(lfric_xios_context_type), intent(inout) :: this
+    logical, optional, intent(in) :: force_finalize
 
     type(linked_list_item_type), pointer :: loop => null()
     type(lfric_xios_file_type),  pointer :: file => null()
     integer(tik) :: timing_idlx, timing_idxc
+    logical :: force_finalize_context
 
+    force_finalize_context = .false.
+    if (present(force_finalize)) force_finalize_context = force_finalize
 
     if (this%xios_context_initialised) then
       if ( LPROF ) call start_timing(timing_idlx, 'lfric_xios.finalise_context')
@@ -261,13 +265,20 @@ contains
         end do
       end if
 
-      ! Finalise the XIOS context - all data will be written to disk and files
-      ! will be closed.
-      write(log_scratch_space, "(A)") "Finalising XIOS context: " // this%get_context_name()
-      call log_event(log_scratch_space, log_level_debug)
-      if ( LPROF ) call start_timing(timing_idxc, 'xios.context_finalize')
-      call xios_context_finalize()
-      if ( LPROF ) call stop_timing(timing_idxc, 'xios.context_finalize')
+      ! SS: This was conditionally removed in prior branch update:
+      !     62a76e63afda1606303b89382ff80b868859c8a6
+      !     I found there is a need to perform xios_context_finalize on all contexts
+      !     otherwise the program hangs during finalization.
+      !     >> Adding a temp optional for force context finalization.
+      if ( this%ugrid_scaled_projected_coordinates .or. force_finalize_context ) then
+        ! Finalise the XIOS context - all data will be written to disk and files
+        ! will be closed. MUST happen for ALL contexts (not just UGRID projected)
+        write(log_scratch_space, "(A)") "Finalising XIOS context: " // this%get_context_name()
+        call log_event(log_scratch_space, log_level_debug)
+        if ( LPROF ) call start_timing(timing_idxc, 'xios.context_finalize')
+        call xios_context_finalize()
+        if ( LPROF ) call stop_timing(timing_idxc, 'xios.context_finalize')
+      end if
 
       ! Only take action if this is a regional model with UGRID Projected
       ! coordinates, as these are awaiting XIOS feature development
